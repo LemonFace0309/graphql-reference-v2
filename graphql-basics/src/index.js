@@ -184,7 +184,7 @@ const resolvers = {
       return post;
     },
     createComment: (parent, { text, post, author }, ctx, info) => {
-      const postExists = posts.some((p) => p.id === post);
+      const postExists = posts.some((p) => p.id === post && p.published);
       const userExists = users.some((user) => user.id === author);
 
       if (!postExists || !userExists) throw new Error('Unable to create new comment');
