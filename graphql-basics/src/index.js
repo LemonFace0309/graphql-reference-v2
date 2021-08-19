@@ -1,4 +1,5 @@
 import { GraphQLServer } from 'graphql-yoga';
+import uuidv4 from 'uuid/v4';
 
 // Scalar types - String, Boolean, Int, Float, ID
 
@@ -20,7 +21,7 @@ const users = [
     name: 'Meow',
     email: 'Cat@test.com',
   },
-]
+];
 
 const posts = [
   {
@@ -44,10 +45,10 @@ const posts = [
     published: true,
     author: '1',
   },
-]
+];
 
 const comments = [
-  { 
+  {
     id: '101',
     text: 'wow',
     author: '1',
@@ -71,7 +72,7 @@ const comments = [
     author: '2',
     post: '11',
   },
-]
+];
 
 const typeDefs = `
   type Query {
@@ -80,6 +81,12 @@ const typeDefs = `
     comments: [Comment!]!
     me: User!
     post: Post!
+  }
+
+  type Mutation {
+    createUser(name: String!, email: String!, age: Int): User!
+    createPost(title: String!, body: String! published: Boolean!, author: ID!): Post!
+    createComment(text: String!, author: ID!, post: ID!): Comment!
   }
 
   type User {
@@ -106,7 +113,7 @@ const typeDefs = `
     author: User!
     post: Post!
   }
-`
+`;
 
 const resolvers = {
   Query: {
@@ -133,7 +140,7 @@ const resolvers = {
         name: 'Charles',
         email: 'test@test.com',
         age: '19',
-      }
+      };
     },
     post: () => ({
       id: 'def456',
@@ -142,17 +149,66 @@ const resolvers = {
       published: true,
     }),
   },
+  Mutation: {
+    createUser: (parent, { name, email, age }, ctx, info) => {
+      const emailTaken = users.some((user) => user.email === email);
+
+      if (emailTaken) {
+        throw new Error('Email taken.');
+      }
+
+      const user = {
+        id: uuidv4(),
+        name,
+        email,
+        age,
+      };
+      users.push(user);
+      return user;
+    },
+    createPost: (parent, { title, body, published, author }, ctx, info) => {
+      const userExists = users.some((user) => user.id === author);
+
+      if (!userExists) {
+        throw new Error('User not found');
+      }
+
+      const post = {
+        id: uuidv4(),
+        title,
+        body,
+        published,
+        author,
+      };
+      posts.push(post);
+      return post;
+    },
+    createComment: (parent, { text, post, author }, ctx, info) => {
+      const postExists = posts.some((p) => p.id === post);
+      const userExists = users.some((user) => user.id === author);
+
+      if (!postExists || !userExists) throw new Error('Unable to create new comment');
+      const comment = {
+        id: uuidv4(),
+        text,
+        post,
+        author,
+      };
+      comments.push(comment);
+      return comment;
+    },
+  },
   Post: {
     author: (parent, args, ctx, info) => {
       return users.find((user) => user.id === parent.author);
     },
     comments: (parent, args, ctx, info) => {
       return comments.filter((comment) => comment.post === parent.id);
-    }
+    },
   },
   User: {
     posts: (parent, args, ctx, info) => {
-      return posts.filter(post => post.author === parent.id);
+      return posts.filter((post) => post.author === parent.id);
     },
     comments: (parent, args, ctx, info) => {
       return comments.filter((comment) => comment.author === parent.id);
@@ -164,15 +220,15 @@ const resolvers = {
     },
     post: (parent, args, ctx, info) => {
       return posts.find((post) => post.id === parent.post);
-    }
-  }
-}
+    },
+  },
+};
 
 const server = new GraphQLServer({
   typeDefs,
   resolvers,
-})
+});
 
 server.start(() => {
   console.log('The server is up!');
-})
+});
