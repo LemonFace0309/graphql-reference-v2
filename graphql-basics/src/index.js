@@ -222,7 +222,6 @@ const resolvers = {
       const deletedPosts = posts.splice(postIndex, 1);
 
       comments = comments.filter((comment) => comment.post !== id)
-      comments = comments.filter((comment) => comment.author !== id);
       return deletedPosts[0];
     },
     createComment: (parent, { data }, ctx, info) => {
