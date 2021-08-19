@@ -32,6 +32,29 @@ const Mutation = {
 
     return deletedUsers[0];
   },
+  updateUser: (parent, { id, data }, { db }, info) => {
+    const { email, name, age } = data;
+    const user = db.users.find((user) => user.id === id);
+    if (!user) throw new Error('User not found');
+
+    if (typeof email === 'string') {
+      const emailTaken = db.users.some((user) => user.email === email);
+
+      if (emailTaken) throw new Error('Email taken');
+
+      user.email = email;
+    }
+
+    if (typeof name === 'string') {
+      user.name = name;
+    }
+
+    if (typeof age !== 'undefined') {
+      user.age = age;
+    }
+
+    return user;
+  },
   createPost: (parent, { data }, { db }, info) => {
     const userExists = db.users.some((user) => user.id === data.author);
 
@@ -54,6 +77,25 @@ const Mutation = {
     db.comments = db.comments.filter((comment) => comment.post !== id);
     return deletedPosts[0];
   },
+  updatePost: (parent, { id, data }, { db }, info) => {
+    const { title, body, published } = data;
+    const post = db.posts.find((post) => post.id === id);
+    if (!post) throw new Error('Post not found');
+
+    if (typeof title === 'string') {
+      post.title = title;
+    }
+
+    if (typeof body === 'string') {
+      post.body = body;
+    }
+
+    if (typeof published === 'boolean') {
+      post.published = published;
+    }
+
+    return post;
+  },
   createComment: (parent, { data }, { db }, info) => {
     const postExists = db.posts.some((post) => post.id === data.post && post.published);
     const userExists = db.users.some((user) => user.id === data.author);
@@ -71,6 +113,17 @@ const Mutation = {
     if (commentIndex === -1) throw new Error('Comment not found');
     const deletedComments = db.comments.splice(commentIndex, 1);
     return deletedComments[0];
+  },
+  updateComment: (parent, { id, data }, { db }, info) => {
+    const { text } = data;
+    const comment = db.comments.find((comment) => comment.id === id);
+    if (!comment) throw new Error('Comment not found')
+
+    if (typeof text === 'string') {
+      comment.text = text;
+    }
+
+    return comment;
   },
 };
 
