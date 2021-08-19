@@ -3,7 +3,7 @@ import uuidv4 from 'uuid/v4';
 
 // Scalar types - String, Boolean, Int, Float, ID
 
-const users = [
+let users = [
   {
     id: '1',
     name: 'Charles',
@@ -23,7 +23,7 @@ const users = [
   },
 ];
 
-const posts = [
+let posts = [
   {
     id: '11',
     title: 'Charles is cool',
@@ -47,7 +47,7 @@ const posts = [
   },
 ];
 
-const comments = [
+let comments = [
   {
     id: '101',
     text: 'wow',
@@ -84,9 +84,30 @@ const typeDefs = `
   }
 
   type Mutation {
-    createUser(name: String!, email: String!, age: Int): User!
-    createPost(title: String!, body: String! published: Boolean!, author: ID!): Post!
-    createComment(text: String!, author: ID!, post: ID!): Comment!
+    createUser(data: CreateUserInput!): User!
+    deleteUser(id: ID!): User!
+    createPost(data: CreatePostInput!): Post!
+    deletePost(id: ID!): Post!
+    createComment(data: CreateCommentInput!): Comment!
+  }
+
+  input CreateUserInput {
+    name: String!
+    email: String!
+    age: Int
+  }
+
+  input CreatePostInput {
+    title: String!
+    body: String!
+    published: Boolean!
+    author: ID!
+  }
+
+  input CreateCommentInput {
+    text: String!
+    author: ID!
+    post: ID!
   }
 
   type User {
@@ -150,8 +171,8 @@ const resolvers = {
     }),
   },
   Mutation: {
-    createUser: (parent, { name, email, age }, ctx, info) => {
-      const emailTaken = users.some((user) => user.email === email);
+    createUser: (parent, { data }, ctx, info) => {
+      const emailTaken = users.some((user) => user.email === data.email);
 
       if (emailTaken) {
         throw new Error('Email taken.');
@@ -159,15 +180,30 @@ const resolvers = {
 
       const user = {
         id: uuidv4(),
-        name,
-        email,
-        age,
+        ...data,
       };
       users.push(user);
       return user;
     },
-    createPost: (parent, { title, body, published, author }, ctx, info) => {
-      const userExists = users.some((user) => user.id === author);
+    deleteUser: (parent, { id }, ctx, info) => {
+      const userIndex = users.findIndex((user) => user.id === id);
+      if (userIndex === -1) throw new Error('User not found');
+      const deletedUsers = users.splice(userIndex, 1);
+
+      posts = posts.filter((post) => {
+        const match = post.author === id;
+        if (match) {
+          comments = comments.filter((comment) => comment.post !== post.id);
+        }
+
+        return !match;
+      });
+      comments = comments.filter((comment) => comment.author !== id);
+
+      return deletedUsers[0];
+    },
+    createPost: (parent, { data }, ctx, info) => {
+      const userExists = users.some((user) => user.id === data.author);
 
       if (!userExists) {
         throw new Error('User not found');
@@ -175,24 +211,28 @@ const resolvers = {
 
       const post = {
         id: uuidv4(),
-        title,
-        body,
-        published,
-        author,
+        ...data,
       };
       posts.push(post);
       return post;
     },
-    createComment: (parent, { text, post, author }, ctx, info) => {
-      const postExists = posts.some((p) => p.id === post && p.published);
-      const userExists = users.some((user) => user.id === author);
+    deletePost: (parent, { id }, ctx, info) => {
+      const postIndex = posts.findIndex((post) => post.id === id);
+      if (postIndex === -1) throw new Error('User not found');
+      const deletedPosts = posts.splice(postIndex, 1);
+
+      comments = comments.filter((comment) => comment.post !== id)
+      comments = comments.filter((comment) => comment.author !== id);
+      return deletedPosts[0];
+    },
+    createComment: (parent, { data }, ctx, info) => {
+      const postExists = posts.some((post) => post.id === data.post && post.published);
+      const userExists = users.some((user) => user.id === data.author);
 
       if (!postExists || !userExists) throw new Error('Unable to create new comment');
       const comment = {
         id: uuidv4(),
-        text,
-        post,
-        author,
+        ...data,
       };
       comments.push(comment);
       return comment;
