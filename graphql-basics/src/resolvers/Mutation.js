@@ -55,7 +55,7 @@ const Mutation = {
 
     return user;
   },
-  createPost: (parent, { data }, { db }, info) => {
+  createPost: (parent, { data }, { db, pubsub }, info) => {
     const userExists = db.users.some((user) => user.id === data.author);
 
     if (!userExists) {
@@ -66,6 +66,10 @@ const Mutation = {
       id: uuidv4(),
       ...data,
     };
+
+    if (data.published) {
+      pubsub.publish('post', { post });
+    }
     db.posts.push(post);
     return post;
   },
@@ -96,7 +100,7 @@ const Mutation = {
 
     return post;
   },
-  createComment: (parent, { data }, { db }, info) => {
+  createComment: (parent, { data }, { db, pubsub }, info) => {
     const postExists = db.posts.some((post) => post.id === data.post && post.published);
     const userExists = db.users.some((user) => user.id === data.author);
 
@@ -105,6 +109,8 @@ const Mutation = {
       id: uuidv4(),
       ...data,
     };
+
+    pubsub.publish(`comment ${data.post}`, { comment });
     db.comments.push(comment);
     return comment;
   },
@@ -117,7 +123,7 @@ const Mutation = {
   updateComment: (parent, { id, data }, { db }, info) => {
     const { text } = data;
     const comment = db.comments.find((comment) => comment.id === id);
-    if (!comment) throw new Error('Comment not found')
+    if (!comment) throw new Error('Comment not found');
 
     if (typeof text === 'string') {
       comment.text = text;
